@@ -1,0 +1,16 @@
+[package]
+name = "controller-input"
+description = "Deterministic semantic controller input recognition for Alt Ctrl"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde.workspace = true
+sidecar-core = { path = "../sidecar-core" }
+thiserror.workspace = true
+
+[lints]
+workspace = true

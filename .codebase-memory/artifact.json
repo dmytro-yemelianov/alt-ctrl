@@ -1,0 +1,11 @@
+{
+    "schema_version": 2,
+    "commit": "HEAD",
+    "indexed_at": "2026-07-24T16:14:56Z",
+    "project": "alt-ctrl",
+    "nodes": 327,
+    "edges": 978,
+    "original_size": 2293760,
+    "compressed_size": 277287,
+    "compression_level": 3
+}
