@@ -11,6 +11,19 @@ The prioritized milestones and task backlog live in
 patterns and license-aware adoption decisions are recorded in
 [the reference project review](docs/reference-research.md).
 
+## Interactive prototype
+
+A fixture-backed Mission Control and Agent View prototype now lives in
+[`app/`](app/README.md). It supports keyboard and standard browser gamepads and
+is intentionally marked as a simulation: it does not start agents or execute
+commands.
+
+```sh
+cd app
+npm ci
+npm run dev
+```
+
 ## Development
 
 The workspace currently contains:
@@ -29,6 +42,14 @@ Run the portable checks with:
 cargo fmt --check
 cargo test --workspace
 cargo clippy --workspace --all-targets -- -D warnings
+```
+
+Frontend checks run separately:
+
+```sh
+cd app
+npm test
+npm run build
 ```
 
 The core crates intentionally avoid operating-system APIs. Platform process,

@@ -151,6 +151,11 @@ unavailable.
   emergency IPC directly to supervision.
 - [ ] **ALT-303** Build deterministic focus navigation, Mission Control, and
   Agent View.
+- [x] **ALT-303a** Build a fixture-backed Mission Control and Agent View
+  renderer prototype with keyboard/gamepad parity, approval inspection, and a
+  simulated emergency hold.
+- [ ] **ALT-303b** Bind the renderer to generated/shared protocol types and the
+  daemon event client inside a Tauri shell.
 - [ ] **ALT-304** Add virtualized ANSI output, follow mode, and bounded UI
   queues.
 - [ ] **ALT-305** Add approval and hold-confirmation UI backed by the policy
