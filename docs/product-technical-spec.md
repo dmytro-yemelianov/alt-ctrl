@@ -20,7 +20,7 @@ The product does not replace an IDE or terminal. It provides a focused sidecar f
 - reviewing diffs at file and hunk level;
 - approving, rejecting, interrupting, resuming, or terminating actions;
 - composing short, structured follow-up instructions;
-- stopping one or all agents without depending on the UI renderer.
+- stopping one or all agents without depending on the TUI process.
 
 The experience should feel like a console control surface rather than a desktop application: every primary action is reachable by controller, focus is always visible, common actions take one or two inputs, and dangerous actions require deliberate confirmation.
 
@@ -69,7 +69,7 @@ Primary jobs:
 2. **Outcomes over chatter.** Prioritize objectives, changed files, tests, pending decisions, and failures above raw logs.
 3. **Semantic actions over hardware codes.** UI components receive normalized actions, never controller-specific button identifiers.
 4. **Safety is external to the agent.** An agent cannot grant itself permissions or alter the policy used to evaluate its actions.
-5. **Interrupts survive UI failure.** Controller capture and process supervision remain available if the renderer freezes.
+5. **Interrupts survive UI failure.** Controller capture and process supervision remain available if the TUI freezes.
 6. **Native client integration first.** Prefer documented local protocols, plugins, and hooks; retain a broad-compatibility PTY adapter.
 7. **Isolation by default.** Each agent writes only in its assigned worktree.
 8. **Visible and reversible decisions.** The user can inspect impact before approval and can trace what happened afterward.
@@ -411,7 +411,7 @@ The Codex adapter must:
 - detect incompatible protocol versions before starting a session;
 - fall back to the PTY adapter when app-server is unavailable or incompatible.
 
-A Codex plugin packages Alt Ctrl skills, lifecycle hooks, launcher commands, and local configuration. Plugins and hooks may enrich the integration, but the fullscreen UI remains a separate Tauri window because the supported plugin surface is not treated as a general-purpose replacement for the official desktop UI.
+A Codex plugin packages Alt Ctrl skills, lifecycle hooks, launcher commands, and local configuration. Plugins and hooks may enrich the integration, but the fullscreen Rust TUI remains a separate process because the supported plugin surface is not treated as a general-purpose replacement for the Alt Ctrl operator interface.
 
 #### 8.3.2 Claude Code
 
@@ -450,7 +450,7 @@ Controller Input Service ───────────────┐
           ▼                             ▼
 Interaction State Machine       Agent Supervisor
           │                      │ managed process trees
-          ├── Fullscreen UI      ├── Session Orchestrator
+          ├── Fullscreen TUI     ├── Session Orchestrator
           ├── Policy Client      ├── PTY Broker
           └── Event Client       └── Native Agent Adapters
                                       ├── Codex app-server
@@ -465,7 +465,7 @@ Interaction State Machine       Agent Supervisor
 
 The production architecture uses separate processes or independently supervised services for:
 
-1. **Fullscreen UI:** rendering, focus, view state, and user-facing notifications.
+1. **Fullscreen TUI:** terminal rendering, focus, view state, and user-facing notifications.
 2. **Controller input service:** device discovery, mappings, chords, haptics, and emergency actions.
 3. **Agent supervisor:** session lifecycle, process-tree ownership, interrupts, timeouts, and restart recovery.
 4. **PTY broker:** terminal creation, I/O, ANSI stream capture, and resize.
@@ -473,7 +473,7 @@ The production architecture uses separate processes or independently supervised 
 6. **Policy engine:** permission profiles, risk classification, approvals, and audit records.
 7. **Platform services:** local IPC, process control, secure storage, notifications, power events, and application launch.
 
-The MVP may combine non-critical services in one daemon, but controller input and agent supervision must not share the renderer's failure domain.
+The MVP may combine non-critical services in one daemon, but controller input and agent supervision must not share the TUI's failure domain.
 
 ### 9.2 Data flow
 
@@ -536,9 +536,8 @@ Additional portability rules:
 | Area | Choice | Rationale |
 |---|---|---|
 | Core daemon | Rust + Tokio | process safety, async I/O, and shared domain types |
-| Desktop shell | Tauri | fullscreen lifecycle and Rust integration |
-| Frontend | TypeScript web UI | mature text, diff, accessibility, and layout tooling |
-| Terminal | xterm.js-compatible renderer | robust ANSI and large-output rendering |
+| User interface | Rust + Ratatui/Crossterm | portable controller-first TUI, shared domain types, deterministic test backend |
+| Terminal output | Ratatui virtualized log with bounded ANSI parsing | robust large-output rendering without a browser runtime |
 | Controller | `gilrs` initially; SDL/HID backend where required | portable input with a path to platform-specific haptics and lighting |
 | PTY | `portable-pty` | portable terminal process management |
 | Native agent integration | Codex app-server; Claude Code plugin/hooks | structured local control using the installed clients and their authentication |
@@ -548,7 +547,7 @@ Additional portability rules:
 | Serialization | Serde | versioned protocol and storage models |
 | Repository state | Git CLI initially | matches installed Git behavior and reduces `libgit2` drift |
 | File observation | `notify` | cross-platform filesystem events |
-| Packaging | Tauri bundler plus OS-native signing | installable companion application on macOS, Linux, and Windows |
+| Packaging | Cargo binaries plus OS-native signing/installers | native companion binaries for macOS, Linux, and Windows |
 
 ### 10.2 UI alternatives
 
@@ -556,7 +555,7 @@ Additional portability rules:
 - **Bevy:** suitable for a highly animated game-like interface, but excessive for a text-heavy first release.
 - **Custom WGPU:** maximum control with the highest implementation and accessibility cost.
 
-The recommended initial product is a Rust orchestration daemon with a Tauri fullscreen frontend. macOS is the first delivery platform, but only the platform-services crate may depend directly on macOS APIs.
+The recommended initial product is a Rust orchestration daemon with a fullscreen Ratatui interface. macOS is the first delivery platform, but only the platform-services crate may depend directly on macOS APIs.
 
 ### 10.3 Platform roadmap
 
@@ -654,7 +653,7 @@ Holding `Options + ○`:
 6. preserves logs, diffs, worktrees, and audit history;
 7. marks sessions interrupted rather than failed.
 
-The controller service sends this command directly to the supervisor over emergency IPC. It does not depend on the renderer, frontend state, or adapter event loop.
+The controller service sends this command directly to the supervisor over emergency IPC. It does not depend on the TUI state or adapter event loop.
 
 ### 12.5 Audit and redaction
 
@@ -806,7 +805,7 @@ Requirements:
 | FR-009 | The system shall display parsed test totals and failures when a supported result format is available. |
 | FR-010 | The system shall classify side-effecting actions through a policy engine before execution. |
 | FR-011 | High-risk actions shall require a timed hold; critical actions shall require inspection and a second confirmation. |
-| FR-012 | The controller service shall interrupt the current session and stop all sessions independently of the renderer. |
+| FR-012 | The controller service shall interrupt the current session and stop all sessions independently of the TUI. |
 | FR-013 | The system shall create an isolated Git worktree for each writable agent session unless explicitly configured read-only. |
 | FR-014 | The system shall prevent an agent from changing its own permission ceiling or policy rules. |
 | FR-015 | The system shall generate and preview structured follow-up instructions from selected UI context. |
@@ -828,7 +827,7 @@ Requirements:
 |---|---|
 | NFR-001 Responsiveness | Focus movement and button feedback should render within 50 ms at the 95th percentile under normal local load. |
 | NFR-002 Emergency latency | Emergency IPC should reach the supervisor within 100 ms at the 95th percentile, excluding OS scheduling stalls. |
-| NFR-003 Reliability | A renderer crash shall not terminate managed agents or disable controller-triggered emergency stop. |
+| NFR-003 Reliability | A TUI crash shall not terminate managed agents or disable controller-triggered emergency stop. |
 | NFR-004 Durability | Confirmed audit records and session lifecycle events shall survive process restart once acknowledged to the UI. |
 | NFR-005 Scale | The MVP shall remain responsive with 4 active sessions, 100,000 output lines per session, and 5,000 changed diff lines total. |
 | NFR-006 Security | Local IPC and persisted state shall be accessible only to the current OS user by default. |
@@ -852,7 +851,7 @@ Requirements:
 - generic PTY fallback and recorded fixtures;
 - live ANSI output, scroll, and follow mode;
 - predefined/structured instructions;
-- interrupt, terminate, and renderer-independent global stop;
+- interrupt, terminate, and TUI-independent global stop;
 - Git status and changed-file list;
 - session and audit persistence;
 - portable core tests running on macOS, Linux, and Windows CI.
@@ -927,7 +926,7 @@ The initial implementation is acceptable when all of the following are demonstra
 1. A DualShock 4 or DualSense can navigate every primary MVP control from launch through session termination.
 2. A user can start Codex through the local app-server adapter in an isolated worktree and see its objective, state, live output, branch, and changed files.
 3. Disconnecting and reconnecting the controller restores control without losing the session.
-4. `L2 + R2` interrupts the current agent, and hold `Options + ○` stops all managed process trees while the renderer is intentionally frozen.
+4. `L2 + R2` interrupts the current agent, and hold `Options + ○` stops all managed process trees while the TUI is intentionally frozen.
 5. Emergency stop preserves output, audit history, branch, worktree, and uncommitted changes.
 6. A medium-risk action requires explicit confirmation, a high-risk action requires a visible timed hold, and a changed payload invalidates prior approval.
 7. The user can open Diff View, navigate files and hunks, and generate a previewed follow-up instruction for selected hunks.
@@ -947,7 +946,7 @@ The initial implementation is acceptable when all of the following are demonstra
 The cross-platform release is acceptable when:
 
 1. The companion installs, launches, updates, and uninstalls through documented OS-native flows on supported macOS, Ubuntu LTS, and Windows 11 versions.
-2. On each platform, a supported controller can navigate the primary UI, reconnect, and trigger renderer-independent emergency stop.
+2. On each platform, a supported controller can navigate the primary TUI, reconnect, and trigger TUI-independent emergency stop.
 3. Process-tree fixtures prove that graceful interrupt and forced termination remove all owned descendants without terminating unrelated processes.
 4. Codex app-server, Claude Code hooks, and PTY adapter contract suites produce equivalent normalized lifecycle and approval events on each platform where the corresponding client is available.
 5. Unsupported controller lighting, haptics, desktop notifications, or agent capabilities are reported accurately and do not disable core control.
@@ -995,6 +994,12 @@ alt-ctrl/
 │   │       ├── git.rs
 │   │       ├── diff.rs
 │   │       └── tests.rs
+│   ├── alt-ctrl-tui/
+│   │   └── src/
+│   │       ├── ui.rs
+│   │       ├── input.rs
+│   │       ├── model.rs
+│   │       └── main.rs
 │   ├── policy-engine/
 │   ├── sidecar-daemon/
 │   └── controller-service/
@@ -1008,13 +1013,6 @@ alt-ctrl/
 │       ├── skills/
 │       ├── commands/
 │       └── hooks/
-├── app/
-│   ├── src/
-│   │   ├── screens/
-│   │   ├── components/
-│   │   ├── state/
-│   │   └── event-stream/
-│   └── src-tauri/
 ├── protocols/
 │   ├── agent-events.schema.json
 │   ├── extension-ipc.schema.json
@@ -1031,7 +1029,7 @@ alt-ctrl/
     └── product-technical-spec.md
 ```
 
-Crate boundaries may be consolidated during Phase 1, provided domain types, renderer-independent supervision, and controller emergency handling remain separated.
+Crate boundaries may be consolidated during Phase 1, provided domain types, TUI-independent supervision, and controller emergency handling remain separated.
 
 ## 22. Recommended initial implementation
 
@@ -1044,16 +1042,16 @@ Build a macOS-first vertical slice while keeping the core continuously buildable
 5. Implement the Codex app-server adapter over local `stdio`, including initialization, generated versioned bindings, streamed events, approval decisions, interrupts, reconnect behavior, and installed-client authentication.
 6. Add the generic PTY adapter and recorded terminal fixtures as a compatibility fallback, not the primary Codex integration.
 7. Build the separate controller service, including reconnect, configurable dead zones, chord recognition, and direct emergency IPC.
-8. Create a Tauri fullscreen UI with Mission Control, Agent View, basic Diff View, an approval modal, and a context-sensitive controller legend.
+8. Create a fullscreen Rust TUI with Mission Control, Agent View, basic Diff View, an approval overlay, and a context-sensitive controller legend.
 9. Package a Codex extension that installs launcher skills and hooks without containing credentials or calling the OpenAI model API.
 10. Add Git worktree creation and observation, with explicit protection for pre-existing changes.
-11. Prove failure isolation by freezing and crashing the renderer while interrupting and stopping the managed process tree.
+11. Prove failure isolation by freezing and crashing the TUI while interrupting and stopping the managed process tree.
 12. Add structured test-result ingestion and report export.
 13. Implement the Claude Code plugin/hooks adapter and its permission-request bridge.
 14. Add Linux platform services and packaging, then Windows services using ConPTY, named pipes, and Job Objects.
 15. Add multi-session switching only after native adapter, safety, persistence, and portability contracts are stable.
 
-The first release should optimize for trustworthy supervision of one local Codex session, not feature breadth. The architectural proof points are native installed-client integration without a provider API key, renderer-independent stop, deterministic controller navigation, durable normalized events, worktree isolation, policy-controlled execution, and a portable core.
+The first release should optimize for trustworthy supervision of one local Codex session, not feature breadth. The architectural proof points are native installed-client integration without a provider API key, TUI-independent stop, deterministic controller navigation, durable normalized events, worktree isolation, policy-controlled execution, and a portable core.
 
 ## 23. Open decisions
 

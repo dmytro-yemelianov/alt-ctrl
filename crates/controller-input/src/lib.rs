@@ -249,23 +249,24 @@ impl InputRecognizer {
                 output.extend(self.try_recognize_chord(event.at));
             }
             ButtonPhase::Released => {
-                if let Some(hold) = &self.active_hold
-                    && self.config.chords[hold.chord_index]
+                if let Some(hold) = &self.active_hold {
+                    if self.config.chords[hold.chord_index]
                         .buttons
                         .contains(&event.button)
-                {
-                    output.push(RecognitionEvent::HoldCancelled {
-                        action: hold.action.clone(),
-                    });
-                    self.active_hold = None;
+                    {
+                        output.push(RecognitionEvent::HoldCancelled {
+                            action: hold.action.clone(),
+                        });
+                        self.active_hold = None;
+                    }
                 }
 
-                if let Some(press) = self.pressed.remove(&event.button)
-                    && !press.suppressed
-                    && !press.simple_emitted
-                    && let Some(action) = self.config.simple_mappings.get(&event.button)
-                {
-                    output.push(RecognitionEvent::Action(action.clone()));
+                if let Some(press) = self.pressed.remove(&event.button) {
+                    if !press.suppressed && !press.simple_emitted {
+                        if let Some(action) = self.config.simple_mappings.get(&event.button) {
+                            output.push(RecognitionEvent::Action(action.clone()));
+                        }
+                    }
                 }
 
                 for (index, chord) in self.config.chords.iter().enumerate() {
@@ -345,13 +346,13 @@ impl InputRecognizer {
     }
 
     fn ensure_monotonic(&mut self, now: MonotonicMillis) -> Result<(), RecognitionError> {
-        if let Some(previous) = self.last_timestamp
-            && now < previous
-        {
-            return Err(RecognitionError::NonMonotonicTimestamp {
-                previous,
-                current: now,
-            });
+        if let Some(previous) = self.last_timestamp {
+            if now < previous {
+                return Err(RecognitionError::NonMonotonicTimestamp {
+                    previous,
+                    current: now,
+                });
+            }
         }
         self.last_timestamp = Some(now);
         Ok(())

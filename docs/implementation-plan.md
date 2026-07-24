@@ -35,7 +35,7 @@ scope.
 6. **Define chord precedence and deferral.** Buttons participating in chords
    must defer their individual action until the chord window expires. Prefer the
    most-specific matching chord, inject a monotonic clock, and keep emergency
-   cooldown independent of renderer state.
+   cooldown independent of TUI state.
 7. **Pull the policy engine into the first safety slice.** Policy is listed for
    Phase 2, but Phase 1 acceptance requires confirmation by risk and payload
    invalidation. Phase 1 needs the decision and approval core; Phase 2 can add
@@ -112,7 +112,7 @@ OS-specific dependency enters these crates.
 - [ ] **ALT-106** Add structured redaction before persistence and display.
 - [ ] **ALT-107** Add crash/restart and owned-descendant conformance fixtures.
 
-**Exit criteria:** a fixture process survives renderer failure, can be stopped
+**Exit criteria:** a fixture process survives TUI failure, can be stopped
 through daemon IPC, and replays its durable history without losing its
 worktree.
 
@@ -137,7 +137,7 @@ worktree.
 using existing authentication, with a clean fallback when app-server is
 unavailable.
 
-### M3 — Controller service and fullscreen UI
+### M3 — Controller service and fullscreen Rust TUI
 
 - [ ] **ALT-301** Add device discovery, reconnect, dead-zone normalization, and
   editable mapping profiles.
@@ -147,22 +147,21 @@ unavailable.
   reports replay through the production parser.
 - [ ] **ALT-301c** Add an explicitly enabled local simulator that feeds the
   normalized input pipeline.
-- [ ] **ALT-302** Run controller capture outside the renderer and connect
+- [ ] **ALT-302** Run controller capture outside the TUI and connect
   emergency IPC directly to supervision.
 - [ ] **ALT-303** Build deterministic focus navigation, Mission Control, and
   Agent View.
-- [x] **ALT-303a** Build a fixture-backed Mission Control and Agent View
-  renderer prototype with keyboard/gamepad parity, approval inspection, and a
-  simulated emergency hold.
-- [ ] **ALT-303b** Bind the renderer to generated/shared protocol types and the
-  daemon event client inside a Tauri shell.
+- [x] **ALT-303a** Build a fixture-backed Rust TUI for Mission Control, Agent
+  View, approval inspection, and emergency status.
+- [ ] **ALT-303b** Bind the TUI to shared protocol types and the daemon event
+  client.
 - [ ] **ALT-304** Add virtualized ANSI output, follow mode, and bounded UI
   queues.
 - [ ] **ALT-305** Add approval and hold-confirmation UI backed by the policy
   kernel.
 - [ ] **ALT-306** Add Git status, basic file/hunk Diff View, and structured
   instruction preview.
-- [ ] **ALT-307** Verify the frozen-renderer emergency-stop acceptance test.
+- [ ] **ALT-307** Verify the frozen-TUI emergency-stop acceptance test.
 
 ### M4 — Persistence-complete MVP
 

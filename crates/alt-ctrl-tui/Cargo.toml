@@ -1,0 +1,16 @@
+[package]
+name = "alt-ctrl-tui"
+description = "Controller-first terminal interface for Alt Ctrl"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+crossterm.workspace = true
+ratatui.workspace = true
+sidecar-core = { path = "../sidecar-core" }
+
+[lints]
+workspace = true

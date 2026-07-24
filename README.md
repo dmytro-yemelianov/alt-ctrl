@@ -11,23 +11,28 @@ The prioritized milestones and task backlog live in
 patterns and license-aware adoption decisions are recorded in
 [the reference project review](docs/reference-research.md).
 
-## Interactive prototype
+## Run the Rust TUI
 
-A fixture-backed Mission Control and Agent View prototype now lives in
-[`app/`](app/README.md). It supports keyboard and standard browser gamepads and
-is intentionally marked as a simulation: it does not start agents or execute
-commands.
+The current interface is a fixture-backed Ratatui application. It exercises
+navigation, approval, interrupt, and emergency states without launching real
+agents or commands.
 
 ```sh
-cd app
-npm ci
-npm run dev
+cargo run -p alt-ctrl-tui
+```
+
+For a non-interactive frame suitable for logs and quick inspection:
+
+```sh
+cargo run -q -p alt-ctrl-tui -- --snapshot
 ```
 
 ## Development
 
 The workspace currently contains:
 
+- `alt-ctrl-tui`: fullscreen Rust terminal interface and deterministic render
+  snapshots;
 - `sidecar-core`: versioned domain events, session lifecycle, and semantic UI
   actions, plus fail-closed adapter capability snapshots;
 - `controller-input`: deterministic, clock-driven chord and hold recognition,
@@ -42,14 +47,6 @@ Run the portable checks with:
 cargo fmt --check
 cargo test --workspace
 cargo clippy --workspace --all-targets -- -D warnings
-```
-
-Frontend checks run separately:
-
-```sh
-cd app
-npm test
-npm run build
 ```
 
 The core crates intentionally avoid operating-system APIs. Platform process,
