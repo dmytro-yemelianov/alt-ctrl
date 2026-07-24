@@ -239,6 +239,7 @@ pub enum GrantValidationError {
 mod tests {
     use std::collections::BTreeMap;
 
+    use proptest::prelude::*;
     use sidecar_core::{
         ActionId, ActionRequest, ApprovalScope, Capability, NormalizedAction, ParseCertainty,
         PermissionProfile, RiskClass, SessionId, UnixTimestampMillis,
@@ -443,5 +444,81 @@ mod tests {
             grant.validate(&request, UnixTimestampMillis(1_000)),
             Err(GrantValidationError::Expired)
         ));
+    }
+
+    proptest! {
+        #[test]
+        fn fingerprint_is_independent_of_argument_insertion_order(
+            first_value in "[a-zA-Z0-9_-]{0,32}",
+            second_value in "[a-zA-Z0-9_-]{0,32}",
+        ) {
+            let mut first = request(
+                "action-01",
+                Capability::ModifyWorktree,
+                RiskClass::Medium,
+                ParseCertainty::Structured,
+            );
+            first.action.arguments = BTreeMap::new();
+            first
+                .action
+                .arguments
+                .insert("alpha".to_owned(), first_value.clone());
+            first
+                .action
+                .arguments
+                .insert("beta".to_owned(), second_value.clone());
+
+            let mut second = first.clone();
+            second.action.arguments = BTreeMap::new();
+            second
+                .action
+                .arguments
+                .insert("beta".to_owned(), second_value);
+            second
+                .action
+                .arguments
+                .insert("alpha".to_owned(), first_value);
+
+            prop_assert_eq!(
+                ActionFingerprint::for_request(&first).expect("fingerprint"),
+                ActionFingerprint::for_request(&second).expect("fingerprint")
+            );
+        }
+
+        #[test]
+        fn any_payload_mutation_invalidates_a_grant(
+            command in "[a-zA-Z0-9 _-]{1,48}",
+        ) {
+            let mut original = request(
+                "action-01",
+                Capability::ModifyWorktree,
+                RiskClass::Medium,
+                ParseCertainty::Structured,
+            );
+            original
+                .action
+                .arguments
+                .insert("command".to_owned(), command.clone());
+            let grant = ApprovalGrant {
+                action_id: original.action_id.clone(),
+                session_id: original.session_id.clone(),
+                fingerprint: ActionFingerprint::for_request(&original)
+                    .expect("fingerprint"),
+                scope: ApprovalScope::Once,
+                expires_at: UnixTimestampMillis(2_000),
+                evidence: ConfirmationEvidence::Pressed,
+            };
+
+            let mut changed = original.clone();
+            changed
+                .action
+                .arguments
+                .insert("command".to_owned(), format!("{command}-changed"));
+
+            prop_assert!(matches!(
+                grant.validate(&changed, UnixTimestampMillis(1_000)),
+                Err(GrantValidationError::PayloadChanged)
+            ));
+        }
     }
 }

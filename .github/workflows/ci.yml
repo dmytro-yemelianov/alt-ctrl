@@ -2,20 +2,21 @@ name: portable-core
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 permissions:
   contents: read
 
 jobs:
-  test:
+  rust:
     strategy:
       fail-fast: false
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
@@ -23,3 +24,13 @@ jobs:
       - run: cargo test --workspace --all-targets
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo fmt --all --check
+
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@1.85.0
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: msrv-1.85.0
+      - run: cargo check --workspace --all-targets --locked
