@@ -4,11 +4,17 @@
 //! owns mapping, chord windows, hold timing, suppression, and cooldown without
 //! reading a system clock or touching a controller device.
 
+mod analog;
+
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use serde::{Deserialize, Serialize};
 use sidecar_core::{FocusDirection, MonotonicMillis, UiAction};
 use thiserror::Error;
+
+pub use analog::{
+    AnalogConfigError, Axis2d, DigitalState, HysteresisButton, HysteresisThresholds, RadialDeadzone,
+};
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -453,6 +459,7 @@ pub enum RecognitionError {
 
 #[cfg(test)]
 mod tests {
+    use proptest::prelude::*;
     use sidecar_core::{MonotonicMillis, UiAction};
 
     use super::{
@@ -668,5 +675,86 @@ mod tests {
                 current: MonotonicMillis(9)
             })
         );
+    }
+
+    proptest! {
+        #[test]
+        fn interrupt_chord_is_order_independent_inside_window(
+            start in 0_u64..1_000_000,
+            delta in 0_u64..=150,
+            l2_first in any::<bool>(),
+        ) {
+            let mut recognizer = InputRecognizer::default();
+            let (first, second) = if l2_first {
+                (Button::L2, Button::R2)
+            } else {
+                (Button::R2, Button::L2)
+            };
+
+            let first_output = recognizer
+                .handle(event(first, ButtonPhase::Pressed, start))
+                .expect("generated timestamp is monotonic");
+            let second_output = recognizer
+                .handle(event(second, ButtonPhase::Pressed, start + delta))
+                .expect("generated timestamp is monotonic");
+            let first_release = recognizer
+                .handle(event(first, ButtonPhase::Released, start + delta + 1))
+                .expect("generated timestamp is monotonic");
+            let second_release = recognizer
+                .handle(event(second, ButtonPhase::Released, start + delta + 2))
+                .expect("generated timestamp is monotonic");
+
+            prop_assert!(first_output.is_empty());
+            prop_assert_eq!(
+                second_output,
+                vec![RecognitionEvent::Action(UiAction::InterruptCurrentAgent)]
+            );
+            prop_assert!(first_release.is_empty());
+            prop_assert!(second_release.is_empty());
+        }
+
+        #[test]
+        fn out_of_window_shoulders_never_interrupt(
+            start in 0_u64..1_000_000,
+            delta in 151_u64..1_000,
+            l2_first in any::<bool>(),
+        ) {
+            let mut recognizer = InputRecognizer::default();
+            let (first, second) = if l2_first {
+                (Button::L2, Button::R2)
+            } else {
+                (Button::R2, Button::L2)
+            };
+
+            let mut output = recognizer
+                .handle(event(first, ButtonPhase::Pressed, start))
+                .expect("generated timestamp is monotonic");
+            output.extend(
+                recognizer
+                    .handle(event(second, ButtonPhase::Pressed, start + delta))
+                    .expect("generated timestamp is monotonic"),
+            );
+            output.extend(
+                recognizer
+                    .advance(MonotonicMillis(start + delta + 151))
+                    .expect("generated timestamp is monotonic"),
+            );
+
+            prop_assert!(!output.contains(
+                &RecognitionEvent::Action(UiAction::InterruptCurrentAgent)
+            ));
+            let expected_first = if l2_first {
+                UiAction::PreviousView
+            } else {
+                UiAction::NextView
+            };
+            let expected_second = if l2_first {
+                UiAction::NextView
+            } else {
+                UiAction::PreviousView
+            };
+            prop_assert!(output.contains(&RecognitionEvent::Action(expected_first)));
+            prop_assert!(output.contains(&RecognitionEvent::Action(expected_second)));
+        }
     }
 }

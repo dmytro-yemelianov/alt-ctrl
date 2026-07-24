@@ -7,17 +7,21 @@ not call model-provider inference APIs directly.
 The project is currently implementing the portable safety and interaction core
 described in [the product and technical specification](docs/product-technical-spec.md).
 The prioritized milestones and task backlog live in
-[the implementation plan](docs/implementation-plan.md).
+[the implementation plan](docs/implementation-plan.md). Relevant ecosystem
+patterns and license-aware adoption decisions are recorded in
+[the reference project review](docs/reference-research.md).
 
 ## Development
 
 The workspace currently contains:
 
 - `sidecar-core`: versioned domain events, session lifecycle, and semantic UI
-  actions;
-- `controller-input`: deterministic, clock-driven chord and hold recognition;
+  actions, plus fail-closed adapter capability snapshots;
+- `controller-input`: deterministic, clock-driven chord and hold recognition,
+  radial deadzones, and trigger hysteresis;
 - `policy-engine`: profile ceilings, risk decisions, and payload-bound approval
-  grants.
+  grants;
+- `event-store`: atomic SQLite event/checkpoint persistence with ordered replay.
 
 Run the portable checks with:
 

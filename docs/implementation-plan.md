@@ -49,6 +49,17 @@ scope.
 10. **Make performance criteria reproducible.** Check in generators for 100,000
     output lines and 5,000 diff lines, define the reference hardware class, and
     measure input-to-render and emergency-IPC latency separately.
+11. **Fail closed during adapter preflight.** Capabilities should begin
+    unverified, distinguish native support from named fallback behavior, and
+    report missing-client, authentication, compatibility, and transport
+    failures separately.
+12. **Turn controller diagnostics into conformance fixtures.** A controller
+    doctor should capture identity, raw reports, axis ranges, and output
+    capabilities in a versioned document that is replayed through the same
+    parser as live hardware.
+13. **Specify dirty-work preservation before cleanup.** Worktree tests must
+    cover tracked and untracked changes, ignored files, preservation conflicts,
+    unsafe paths, and retry after partial cleanup.
 
 ## Architecture decisions for the initial slice
 
@@ -62,6 +73,11 @@ scope.
   fingerprint of the normalized request payload.
 - Controller recognition is deterministic and driven by caller-supplied
   monotonic milliseconds, so it is testable without hardware or sleeps.
+- Adapter capabilities are explicit and conservative: unavailable and
+  unverified operations cannot appear native, while fallback behavior must be
+  named.
+- Analog sticks use radial deadzone rescaling and analog triggers use separate
+  press/release thresholds to prevent boundary chatter.
 
 ## Milestones and tasks
 
@@ -76,21 +92,23 @@ scope.
 - [x] **ALT-005** Implement permission ceilings, risk decisions, canonical
   fingerprints, and approval revalidation.
 - [x] **ALT-006** Add pure application navigation and approval reducers.
-- [ ] **ALT-007** Add schema-compatibility and property-based transition tests.
+- [x] **ALT-007** Add schema-compatibility and property-based transition tests.
 
 **Exit criteria:** portable tests pass on macOS, Ubuntu, and Windows; no
 OS-specific dependency enters these crates.
 
 ### M1 — Durable single-session daemon
 
-- [ ] **ALT-101** Define event-store and snapshot interfaces and SQLite
+- [x] **ALT-101** Define event-store and snapshot interfaces and SQLite
   migrations.
-- [ ] **ALT-102** Atomically append events and reducer checkpoints with replay
+- [x] **ALT-102** Atomically append events and reducer checkpoints with replay
   and deduplication.
 - [ ] **ALT-103** Define narrow process-tree, local-IPC, PTY, and path traits
   with fakes.
 - [ ] **ALT-104** Implement macOS process-group ownership and emergency stop.
 - [ ] **ALT-105** Create and observe a protected single-session Git worktree.
+- [ ] **ALT-105a** Preserve dirty tracked and non-ignored untracked work before
+  teardown; retain recovery data and surface conflicts when restoration fails.
 - [ ] **ALT-106** Add structured redaction before persistence and display.
 - [ ] **ALT-107** Add crash/restart and owned-descendant conformance fixtures.
 
@@ -104,6 +122,8 @@ worktree.
   and check in versioned fixtures.
 - [ ] **ALT-202** Implement initialization, capability negotiation, and
   incompatible-version diagnostics over stdio.
+- [x] **ALT-202a** Define fail-closed adapter capability and preflight snapshot
+  contracts.
 - [ ] **ALT-203** Map Codex thread/turn/item/approval/usage events to normalized
   envelopes.
 - [ ] **ALT-204** Dispatch instructions, approvals, and interrupts with request
@@ -121,6 +141,12 @@ unavailable.
 
 - [ ] **ALT-301** Add device discovery, reconnect, dead-zone normalization, and
   editable mapping profiles.
+- [x] **ALT-301a** Implement portable radial-deadzone and trigger-hysteresis
+  primitives.
+- [ ] **ALT-301b** Add a versioned controller-doctor capture format whose
+  reports replay through the production parser.
+- [ ] **ALT-301c** Add an explicitly enabled local simulator that feeds the
+  normalized input pipeline.
 - [ ] **ALT-302** Run controller capture outside the renderer and connect
   emergency IPC directly to supervision.
 - [ ] **ALT-303** Build deterministic focus navigation, Mission Control, and
@@ -150,10 +176,11 @@ single-session safety and recovery contracts pass.
 
 ## Immediate next tasks
 
-After M0's first implementation pass:
-
-1. implement `ALT-006` application/approval reducers;
-2. add property-based lifecycle and input tests (`ALT-007`);
-3. design the durable event-store transaction (`ALT-101`/`ALT-102`);
-4. spike the installed Codex app-server protocol before committing adapter
+1. verify the durable event-store transaction under crash/restart fixtures
+   (`ALT-107`);
+2. define narrow process, IPC, PTY, and path traits (`ALT-103`);
+3. implement protected worktree creation and dirty-work preservation
+   (`ALT-105`/`ALT-105a`);
+4. specify the controller-doctor fixture schema (`ALT-301b`);
+5. spike the installed Codex app-server protocol before committing adapter
    bindings (`ALT-201`).

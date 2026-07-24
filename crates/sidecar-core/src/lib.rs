@@ -6,6 +6,7 @@
 
 pub mod actions;
 pub mod approvals;
+pub mod capabilities;
 pub mod events;
 pub mod identifiers;
 pub mod navigation;
@@ -16,6 +17,10 @@ pub use actions::{FocusDirection, ScrollDirection, UiAction};
 pub use approvals::{
     ActionRequest, ApprovalScope, ApprovalState, Capability, NormalizedAction, ParseCertainty,
     PendingAction, PermissionProfile, RiskClass,
+};
+pub use capabilities::{
+    AdapterCapabilities, AdapterCapability, AdapterCapabilitySnapshot, AdapterIntegrationLevel,
+    AdapterReadiness, CapabilitySupport,
 };
 pub use events::{
     AgentEvent, EventEnvelope, EventSource, OutputStream, SCHEMA_VERSION_V1, SchemaVersion,

@@ -186,7 +186,75 @@ pub struct AgentSession {
 
 #[cfg(test)]
 mod tests {
+    use proptest::prelude::*;
+
     use super::{AdapterConnectionState, SessionState, TransitionOutcome};
+
+    fn any_session_state() -> impl Strategy<Value = SessionState> {
+        prop_oneof![
+            Just(SessionState::Created),
+            Just(SessionState::Starting),
+            Just(SessionState::Running),
+            Just(SessionState::WaitingForApproval),
+            Just(SessionState::WaitingForAnswer),
+            Just(SessionState::Blocked),
+            Just(SessionState::Interrupting),
+            Just(SessionState::Interrupted),
+            Just(SessionState::Resuming),
+            Just(SessionState::Failing),
+            Just(SessionState::Failed),
+            Just(SessionState::Terminating),
+            Just(SessionState::Terminated),
+            Just(SessionState::Completed),
+        ]
+    }
+
+    fn model_allows_session_transition(from: SessionState, to: SessionState) -> bool {
+        if from == to {
+            return true;
+        }
+        match from {
+            SessionState::Created => {
+                matches!(to, SessionState::Starting | SessionState::Terminating)
+            }
+            SessionState::Starting => matches!(
+                to,
+                SessionState::Running | SessionState::Failing | SessionState::Terminating
+            ),
+            SessionState::Running => matches!(
+                to,
+                SessionState::Completed
+                    | SessionState::WaitingForApproval
+                    | SessionState::WaitingForAnswer
+                    | SessionState::Blocked
+                    | SessionState::Interrupting
+                    | SessionState::Failing
+                    | SessionState::Terminating
+            ),
+            SessionState::WaitingForApproval
+            | SessionState::WaitingForAnswer
+            | SessionState::Blocked => matches!(
+                to,
+                SessionState::Running
+                    | SessionState::Interrupting
+                    | SessionState::Failing
+                    | SessionState::Terminating
+            ),
+            SessionState::Interrupting => {
+                matches!(to, SessionState::Interrupted | SessionState::Failing)
+            }
+            SessionState::Interrupted => {
+                matches!(to, SessionState::Resuming | SessionState::Terminating)
+            }
+            SessionState::Resuming => matches!(
+                to,
+                SessionState::Running | SessionState::Failing | SessionState::Terminating
+            ),
+            SessionState::Failing => to == SessionState::Failed,
+            SessionState::Terminating => to == SessionState::Terminated,
+            SessionState::Failed | SessionState::Terminated | SessionState::Completed => false,
+        }
+    }
 
     #[test]
     fn lifecycle_allows_documented_happy_path() {
@@ -243,5 +311,34 @@ mod tests {
                 AdapterConnectionState::Reconnecting
             ))
         );
+    }
+
+    proptest! {
+        #[test]
+        fn lifecycle_matches_the_specified_transition_graph(
+            from in any_session_state(),
+            to in any_session_state(),
+        ) {
+            let result = from.transition_to(to);
+            prop_assert_eq!(
+                result.is_ok(),
+                model_allows_session_transition(from, to)
+            );
+
+            match result {
+                Ok(TransitionOutcome::Changed(state)) => {
+                    prop_assert_eq!(state, to);
+                    prop_assert_ne!(from, to);
+                }
+                Ok(TransitionOutcome::Unchanged(state)) => {
+                    prop_assert_eq!(state, from);
+                    prop_assert_eq!(from, to);
+                }
+                Err(error) => {
+                    prop_assert_eq!(error.from, from);
+                    prop_assert_eq!(error.to, to);
+                }
+            }
+        }
     }
 }

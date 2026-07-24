@@ -105,6 +105,8 @@ impl EventEnvelope {
 
 #[cfg(test)]
 mod tests {
+    use proptest::prelude::*;
+
     use super::{EventEnvelope, SCHEMA_VERSION_V1, SchemaVersion};
 
     #[test]
@@ -123,5 +125,29 @@ mod tests {
             SCHEMA_VERSION_V1,
             SchemaVersion { major: 2, minor: 0 }
         ));
+    }
+
+    proptest! {
+        #[test]
+        fn compatibility_is_same_major_and_non_newer_minor(
+            reader_major in any::<u16>(),
+            reader_minor in any::<u16>(),
+            writer_major in any::<u16>(),
+            writer_minor in any::<u16>(),
+        ) {
+            let reader = SchemaVersion {
+                major: reader_major,
+                minor: reader_minor,
+            };
+            let writer = SchemaVersion {
+                major: writer_major,
+                minor: writer_minor,
+            };
+
+            prop_assert_eq!(
+                EventEnvelope::is_compatible_with(reader, writer),
+                reader_major == writer_major && writer_minor <= reader_minor
+            );
+        }
     }
 }
